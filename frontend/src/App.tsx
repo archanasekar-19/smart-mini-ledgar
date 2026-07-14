@@ -1,5 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation
+} from 'react-router-dom';
+import {
   RefreshCw,
   LayoutDashboard,
   FileSpreadsheet,
@@ -7,7 +15,8 @@ import {
   X,
   FileText,
   TrendingUp,
-  PieChart
+  PieChart,
+  LogOut
 } from 'lucide-react';
 import { CustomCharts } from './components/CustomCharts';
 import { StatsGrid } from './components/StatsGrid';
@@ -15,6 +24,7 @@ import { ActivityHeatmap } from './components/ActivityHeatmap';
 import { FraudAuditor } from './components/FraudAuditor';
 import { TransactionForm } from './components/TransactionForm';
 import { TransactionList } from './components/TransactionList';
+import { Login } from './components/Login';
 
 interface Transaction {
   id: string;
@@ -141,8 +151,13 @@ const runRiskAnalysis = (txs: Transaction[]) => {
   return alerts;
 };
 
-function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions'>('dashboard');
+function AppContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Authentication states
+  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [user, setUser] = useState<any | null>(JSON.parse(localStorage.getItem('user') || 'null'));
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
@@ -179,7 +194,33 @@ function App() {
 
   const API_BASE = 'http://localhost:3000/api';
 
+  const showToast = (text: string, type: 'success' | 'error') => {
+    setToastMessage({ text, type });
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4500);
+  };
+
+  const handleLoginSuccess = (newToken: string, newUser: any) => {
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(newUser));
+    setToken(newToken);
+    setUser(newUser);
+    showToast(`Welcome back, ${newUser.name}!`, 'success');
+    navigate('/dashboard');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setToken(null);
+    setUser(null);
+    showToast('Signed out successfully.', 'success');
+    navigate('/login');
+  };
+
   const fetchTransactions = useCallback(async () => {
+    if (!token) return;
     setLoading(true);
     setToastMessage(null);
     try {
@@ -192,11 +233,15 @@ function App() {
       queryParams.append('page', filters.page.toString());
       queryParams.append('limit', filters.limit.toString());
 
-      const res = await fetch(`${API_BASE}/transactions?${queryParams.toString()}`);
+      const res = await fetch(`${API_BASE}/transactions?${queryParams.toString()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setTransactions(data.transactions);
         setMeta(data.meta);
+      } else if (res.status === 401) {
+        handleLogout();
       } else {
         showToast('Failed to load transaction data.', 'error');
       }
@@ -205,51 +250,58 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [filters, API_BASE]);
+  }, [filters, token, API_BASE]);
 
   const fetchSummary = useCallback(async () => {
+    if (!token) return;
     try {
-      const res = await fetch(`${API_BASE}/transactions/summary`);
+      const res = await fetch(`${API_BASE}/transactions/summary`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setSummary(data);
+      } else if (res.status === 401) {
+        handleLogout();
       }
     } catch (err) {
       console.error('Error fetching summary:', err);
     }
-  }, [API_BASE]);
+  }, [token, API_BASE]);
 
   const fetchForecast = useCallback(async () => {
+    if (!token) return;
     try {
-      const res = await fetch(`${API_BASE}/transactions/forecast`);
+      const res = await fetch(`${API_BASE}/transactions/forecast`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setForecast(data);
+      } else if (res.status === 401) {
+        handleLogout();
       }
     } catch (err) {
       console.error('Error fetching forecast:', err);
     }
-  }, [API_BASE]);
+  }, [token, API_BASE]);
 
   useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
+    if (token) {
+      fetchTransactions();
+    }
+  }, [fetchTransactions, token]);
 
   useEffect(() => {
-    fetchSummary();
-    fetchForecast();
-  }, [fetchSummary, fetchForecast]);
+    if (token) {
+      fetchSummary();
+      fetchForecast();
+    }
+  }, [fetchSummary, fetchForecast, token]);
 
   useEffect(() => {
     setSmsMessage(`Ledger Update: Net balance is $${summary.netBalance.toFixed(2)}. Income is $${summary.totalIncome.toFixed(2)}, Expenses: $${summary.totalExpenses.toFixed(2)}.`);
   }, [summary]);
-
-  const showToast = (text: string, type: 'success' | 'error') => {
-    setToastMessage({ text, type });
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4500);
-  };
 
   const handleManualSubmit = async (data: {
     description: string;
@@ -259,6 +311,7 @@ function App() {
     date: string;
     tagsString: string;
   }) => {
+    if (!token) return;
     const amountNum = parseFloat(data.amount);
     const tags = data.tagsString
       ? data.tagsString.split(',').map(t => t.trim()).filter(t => t.length > 0)
@@ -267,7 +320,10 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/transactions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           description: data.description,
           amount: amountNum,
@@ -294,6 +350,7 @@ function App() {
 
   const handleSendSms = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!token) return;
     if (!smsRecipient || !smsMessage) {
       showToast('Please specify recipient and message.', 'error');
       return;
@@ -303,7 +360,10 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/transactions/send-notification`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           medium: 'sms',
           recipient: smsRecipient,
@@ -325,11 +385,13 @@ function App() {
   };
 
   const handleDeleteTransaction = async (id: string) => {
+    if (!token) return;
     if (!window.confirm('Are you sure you want to delete this transaction?')) return;
 
     try {
       const res = await fetch(`${API_BASE}/transactions/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         setUnreadCount(prev => prev + 1);
@@ -406,215 +468,289 @@ function App() {
   const riskAlerts = runRiskAnalysis(transactions);
   const flaggedTxIds = new Set(riskAlerts.map(a => a.txId));
 
+  // Determine current active navigation state based on path
+  const isDashboardRoute = location.pathname === '/dashboard' || location.pathname === '/';
+  const isTransactionsRoute = location.pathname === '/transactions' || location.pathname === '/transaction';
+
   return (
-    <div className="app-container">
-      {/* 1. Full-Width Topbar Sticky Header */}
-      <header className="topbar">
-        <div className="topbar-title">
-          <h2>SmartLedger</h2>
-        </div>
-
-        <div className="topbar-actions" style={{ gap: '0.75rem' }}>
-          <button className="topbar-btn" onClick={handleRefreshAll}>
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Sync
-          </button>
-
-          {/* Notification Bell Button */}
-          <div className="notification-bell-btn">
-            <button className="topbar-btn" onClick={openTwilioDialog} style={{ padding: '0.5rem 0.75rem' }}>
-              <Bell size={16} />
-              {unreadCount > 0 && <span className="bell-badge" style={{ top: '-6px', right: '-6px' }}>{unreadCount}</span>}
-            </button>
-          </div>
-
-          <button className="topbar-btn" onClick={() => setIsAddTransactionOpen(true)}>
-            + Add Transaction
-          </button>
-        </div>
-      </header>
-
-      <div className="app-layout">
-        {/* 2. Left Sidebar Navigation */}
-        <aside className="sidebar">
-          <nav className="sidebar-nav">
-            <div
-              className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setActiveTab('dashboard')}
-            >
-              <LayoutDashboard size={16} />
-              Dashboard
-            </div>
-            <div
-              className={`nav-link ${activeTab === 'transactions' ? 'active' : ''}`}
-              onClick={() => setActiveTab('transactions')}
-            >
-              <FileSpreadsheet size={16} />
-              Transactions
-            </div>
-          </nav>
-
-          <div className="sidebar-footer">
-            <span>Version 1.0.0</span>
-          </div>
-        </aside>
-
-        {/* Right Content Wrapper */}
-        <div className="content-wrapper">
-          {/* Main Content Scroll View */}
-          <main className="main-content">
-            {toastMessage && (
-              <div className={`toast ${toastMessage.type === 'success' ? 'success-toast' : 'error-toast'}`}>
-                {toastMessage.text}
-              </div>
-            )}
-
-            {activeTab === 'dashboard' ? (
-              /* ================= DASHBOARD VIEW (NEAT ROW FLOW) ================= */
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                {/* Row 1: Stats Overview Summary */}
-                <StatsGrid
-                  netBalance={summary.netBalance}
-                  totalIncome={summary.totalIncome}
-                  totalExpenses={summary.totalExpenses}
-                  savingsRate={savingsRate}
-                />
-
-                {/* Row 2: Recharts spline curve and Category Doughnut */}
-                <CustomCharts
-                  history={summary.balanceHistory}
-                  forecast={forecast.forecast}
-                  totalIncome={summary.totalIncome}
-                  totalExpenses={summary.totalExpenses}
-                  expensesByCategory={summary.expensesByCategory}
-                />
-
-                {/* Row 3: Daily Activity Heatmap (Nivo Calendar contributions) */}
-                <ActivityHeatmap history={summary.balanceHistory} />
-
-                {/* Row 4: Smart Budget Assistant */}
-                <FraudAuditor alerts={riskAlerts} />
-              </div>
-            ) : (
-              /* ================= TRANSACTIONS VIEW (FULL WIDTH LAYOUT) ================= */
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%' }}>
-                <TransactionList
-                  transactions={transactions}
-                  meta={meta}
-                  filters={filters}
-                  flaggedTxIds={flaggedTxIds}
-                  onAddClick={undefined}
-                  onFilterChange={handleFilterChange}
-                  onResetFilters={handleResetFilters}
-                  onDelete={handleDeleteTransaction}
-                />
-              </div>
-            )}
-          </main>
-        </div>
-      </div>
-
-      {/* 4. Add Transaction Dialog Overlay modal */}
-      {isAddTransactionOpen && (
-        <div className="modal-overlay">
-          <div className="modal-container" style={{ maxWidth: '480px' }}>
-            <TransactionForm
-              onSubmit={(data) => {
-                handleManualSubmit(data);
-                setIsAddTransactionOpen(false);
-              }}
-              onClose={() => setIsAddTransactionOpen(false)}
+    <Routes>
+      {/* Login Route */}
+      <Route
+        path="/login"
+        element={
+          token ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Login
+              onLoginSuccess={handleLoginSuccess}
+              showToast={showToast}
+              toastMessage={toastMessage}
             />
-          </div>
-        </div>
-      )}
+          )
+        }
+      />
 
-      {/* 5. Twilio Settings & SMS Dispatcher Modal Dialog */}
-      {isTwilioDialogOpen && (
-        <div className="modal-overlay">
-          <div className="modal-container">
-            <div className="modal-header">
-              <h3>SMS Notification</h3>
-              <button className="modal-close-btn" onClick={() => setIsTwilioDialogOpen(false)}>
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <form onSubmit={handleSendSms} className="flex-col" style={{ gap: '0.85rem' }}>
-                <div className="form-group">
-                  <label>Recipient Phone Number</label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="e.g. +919384257033"
-                    value={smsRecipient}
-                    onChange={(e) => setSmsRecipient(e.target.value)}
-                  />
-                  <span className="help-text" style={{ fontSize: '0.725rem', marginTop: '0.25rem', lineHeight: '1.25' }}>
-                    💡 Tip: Feel free to type in your own mobile number here (in international format, e.g. <code>+919384257033</code>) to receive live SMS updates!
-                  </span>
+      {/* Main Authenticated Layout Routes */}
+      <Route
+        path="/*"
+        element={
+          !token ? (
+            <Navigate to="/login" replace />
+          ) : (
+            <div className="app-container">
+              {/* 1. Full-Width Topbar Sticky Header */}
+              <header className="topbar">
+                <div className="topbar-title">
+                  <h2>SmartLedger</h2>
                 </div>
 
-                <div className="form-group">
-                  <label>Quick Report Templates</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', gap: '0.35rem' }}
-                      onClick={applyBalanceTemplate}
-                    >
-                      <FileText size={12} /> Balance Stats
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', gap: '0.35rem' }}
-                      onClick={applyCategoryTemplate}
-                    >
-                      <PieChart size={12} /> Top Expense
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', gap: '0.35rem' }}
-                      onClick={applyForecastTemplate}
-                    >
-                      <TrendingUp size={12} /> 7-Day Forecast
+                <div className="topbar-actions" style={{ gap: '0.75rem' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '500', marginRight: '0.5rem', opacity: 0.9 }}>
+                    Hi, {user?.name || 'User'}
+                  </span>
+
+                  <button className="topbar-btn" onClick={handleRefreshAll}>
+                    <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                    Sync
+                  </button>
+
+                  {/* Notification Bell Button */}
+                  <div className="notification-bell-btn">
+                    <button className="topbar-btn" onClick={openTwilioDialog} style={{ padding: '0.5rem 0.75rem' }}>
+                      <Bell size={16} />
+                      {unreadCount > 0 && <span className="bell-badge" style={{ top: '-6px', right: '-6px' }}>{unreadCount}</span>}
                     </button>
                   </div>
-                </div>
 
-                <div className="form-group">
-                  <label>Alert Message Content</label>
-                  <textarea
-                    rows={3}
-                    required
-                    style={{
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '0.25rem',
-                      padding: '0.6rem',
-                      fontFamily: 'var(--font-body)',
-                      fontSize: '0.875rem',
-                      resize: 'vertical',
-                      color: 'var(--color-text-primary)'
-                    }}
-                    value={smsMessage}
-                    onChange={(e) => setSmsMessage(e.target.value)}
-                  ></textarea>
-                </div>
+                  <button className="topbar-btn" onClick={() => setIsAddTransactionOpen(true)}>
+                    + Add Transaction
+                  </button>
 
-                <button type="submit" className="primary-btn w-full" disabled={smsLoading} style={{ marginTop: '0.25rem' }}>
-                  {smsLoading ? 'Sending...' : 'Send SMS Alert'}
-                </button>
-              </form>
+                  <button className="topbar-btn" onClick={handleLogout} style={{ backgroundColor: 'rgba(239, 35, 60, 0.2)', borderColor: 'rgba(239, 35, 60, 0.35)', color: '#FFFFFF' }}>
+                    <LogOut size={14} />
+                    Logout
+                  </button>
+                </div>
+              </header>
+
+              <div className="app-layout">
+                {/* 2. Left Sidebar Navigation */}
+                <aside className="sidebar">
+                  <nav className="sidebar-nav">
+                    <div
+                      className={`nav-link ${isDashboardRoute ? 'active' : ''}`}
+                      onClick={() => navigate('/dashboard')}
+                    >
+                      <LayoutDashboard size={16} />
+                      Dashboard
+                    </div>
+                    <div
+                      className={`nav-link ${isTransactionsRoute ? 'active' : ''}`}
+                      onClick={() => navigate('/transactions')}
+                    >
+                      <FileSpreadsheet size={16} />
+                      Transactions
+                    </div>
+                  </nav>
+
+                  <div className="sidebar-footer">
+                    <span>Version 1.0.0</span>
+                  </div>
+                </aside>
+
+                {/* Right Content Wrapper */}
+                <div className="content-wrapper">
+                  {/* Main Content Scroll View */}
+                  <main className="main-content">
+                    {toastMessage && (
+                      <div className={`toast ${toastMessage.type === 'success' ? 'success-toast' : 'error-toast'}`}>
+                        {toastMessage.text}
+                      </div>
+                    )}
+
+                    <Routes>
+                      {/* Dashboard Content */}
+                      <Route
+                        path="/dashboard"
+                        element={
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                            <StatsGrid
+                              netBalance={summary.netBalance}
+                              totalIncome={summary.totalIncome}
+                              totalExpenses={summary.totalExpenses}
+                              savingsRate={savingsRate}
+                            />
+                            <CustomCharts
+                              history={summary.balanceHistory}
+                              forecast={forecast.forecast}
+                              totalIncome={summary.totalIncome}
+                              totalExpenses={summary.totalExpenses}
+                              expensesByCategory={summary.expensesByCategory}
+                            />
+                            <ActivityHeatmap history={summary.balanceHistory} />
+                            <FraudAuditor alerts={riskAlerts} />
+                          </div>
+                        }
+                      />
+
+                      {/* Transactions Content */}
+                      <Route
+                        path="/transactions"
+                        element={
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%' }}>
+                            <TransactionList
+                              transactions={transactions}
+                              meta={meta}
+                              filters={filters}
+                              flaggedTxIds={flaggedTxIds}
+                              onAddClick={undefined}
+                              onFilterChange={handleFilterChange}
+                              onResetFilters={handleResetFilters}
+                              onDelete={handleDeleteTransaction}
+                            />
+                          </div>
+                        }
+                      />
+
+                      {/* Alias /transaction route */}
+                      <Route
+                        path="/transaction"
+                        element={
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%' }}>
+                            <TransactionList
+                              transactions={transactions}
+                              meta={meta}
+                              filters={filters}
+                              flaggedTxIds={flaggedTxIds}
+                              onAddClick={undefined}
+                              onFilterChange={handleFilterChange}
+                              onResetFilters={handleResetFilters}
+                              onDelete={handleDeleteTransaction}
+                            />
+                          </div>
+                        }
+                      />
+
+                      {/* Default dashboard redirect */}
+                      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    </Routes>
+                  </main>
+                </div>
+              </div>
+
+              {/* 4. Add Transaction Dialog Overlay modal */}
+              {isAddTransactionOpen && (
+                <div className="modal-overlay">
+                  <div className="modal-container" style={{ maxWidth: '480px' }}>
+                    <TransactionForm
+                      onSubmit={(data) => {
+                        handleManualSubmit(data);
+                        setIsAddTransactionOpen(false);
+                      }}
+                      onClose={() => setIsAddTransactionOpen(false)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 5. Twilio Settings & SMS Dispatcher Modal Dialog */}
+              {isTwilioDialogOpen && (
+                <div className="modal-overlay">
+                  <div className="modal-container">
+                    <div className="modal-header">
+                      <h3>SMS Notification</h3>
+                      <button className="modal-close-btn" onClick={() => setIsTwilioDialogOpen(false)}>
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    <div className="modal-body">
+                      <form onSubmit={handleSendSms} className="flex-col" style={{ gap: '0.85rem' }}>
+                        <div className="form-group">
+                          <label>Recipient Phone Number</label>
+                          <input
+                            type="tel"
+                            required
+                            placeholder="e.g. +919384257033"
+                            value={smsRecipient}
+                            onChange={(e) => setSmsRecipient(e.target.value)}
+                          />
+                          <span className="help-text" style={{ fontSize: '0.725rem', marginTop: '0.25rem', lineHeight: '1.25' }}>
+                            💡 Tip: Feel free to type in your own mobile number here (in international format, e.g. <code>+919384257033</code>) to receive live SMS updates!
+                          </span>
+                        </div>
+
+                        <div className="form-group">
+                          <label>Quick Report Templates</label>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                            <button
+                              type="button"
+                              className="secondary-btn"
+                              style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', gap: '0.35rem' }}
+                              onClick={applyBalanceTemplate}
+                            >
+                              <FileText size={12} /> Balance Stats
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary-btn"
+                              style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', gap: '0.35rem' }}
+                              onClick={applyCategoryTemplate}
+                            >
+                              <PieChart size={12} /> Top Expense
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary-btn"
+                              style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', gap: '0.35rem' }}
+                              onClick={applyForecastTemplate}
+                            >
+                              <TrendingUp size={12} /> 7-Day Forecast
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label>Alert Message Content</label>
+                          <textarea
+                            rows={3}
+                            required
+                            style={{
+                              background: 'var(--bg-input)',
+                              border: '1px solid var(--border-color)',
+                              borderRadius: '0.25rem',
+                              padding: '0.6rem',
+                              fontFamily: 'var(--font-body)',
+                              fontSize: '0.875rem',
+                              resize: 'vertical',
+                              color: 'var(--color-text-primary)'
+                            }}
+                            value={smsMessage}
+                            onChange={(e) => setSmsMessage(e.target.value)}
+                          ></textarea>
+                        </div>
+
+                        <button type="submit" className="primary-btn w-full" disabled={smsLoading} style={{ marginTop: '0.25rem' }}>
+                          {smsLoading ? 'Sending...' : 'Send SMS Alert'}
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+          )
+        }
+      />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
 

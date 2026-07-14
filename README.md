@@ -1,6 +1,6 @@
 # 💡 Smart Ledger ($martLedger)
 
-A lightweight, full-stack financial ledger application built with **React 19 (Vite)**, **NestJS**, and **PostgreSQL**. It features a modern **purple-to-magenta gradient** design theme styled entirely in the **Poppins** typography family, slate-violet text details, and soft lavender background highlights.
+A lightweight, full-stack financial ledger application built with **React 19 (Vite)**, **NestJS**, and **PostgreSQL**. It features a modern **purple-to-magenta gradient** design theme styled entirely in the **Poppins** typography family, modular React components, client-side routing, secure **Bearer Auth** session controls, and soft lavender background highlights.
 
 ---
 
@@ -49,30 +49,37 @@ Open `http://localhost:5173` in your browser.
 
 ## ✨ Features & Architecture
 
-### 🗺️ 1. Purple-to-Magenta Theme & Layout
+### 🔐 1. Standalone Login & Bearer Authentication
+- **Standalone Module:** Extracted the visual markup and login action into a standalone component under [Login.tsx].
+- **Quick-Login Option:** Features a single prominent **"Continue as Archana"** gradient button that instantly logs in as the default profile (`archana@smartledger.com` / `password`).
+- **Bearer Auth Enforcer:** Intercepts database transaction REST endpoints using a NestJS `AuthGuard`.
+- **Crypto-Signed Tokens:** Signs JWTs using Node.js's native `crypto` module (without external dependencies) to verify expiration and payload signatures.
+- **Session Destroy:** Includes a **Log Out** button inside the top header to clear the stored session state.
+
+### 🛣️ 2. Client-Side Routing
+- **Routing Engine:** Configured `react-router-dom` in the frontend client to map paths:
+  - `/login`: Route for the login card screen.
+  - `/dashboard`: Route for stats, charts, heatmap, and assistant alerts.
+  - `/transactions` & `/transaction`: Route for the full-width ledger table.
+- **Auth Guard Redirects:** Automatically routes unauthenticated visitors back to `/login`, and redirects authenticated sessions trying to visit `/login` back to `/dashboard`.
+
+### 🗺️ 3. Purple-to-Magenta Theme & Layout
 - **Poppins Typography:** All headings, dashboard text metrics, tables, and settings use the **Poppins** font family.
-- **Full-Width Topbar Banner:** Renders a sticky top header spanning 100% of the screen width, styled with a horizontal gradient going from royal purple (`#820AD1`) to hot pink/magenta (`#FF006E`). It displays the bold white brand title **SmartLedger** on the left, and control actions (Sync, Twilio SMS test bell, and **+ Add Transaction**) on the right.
+- **Full-Width Topbar Banner:** Renders a sticky top header spanning 100% of the screen width, styled with a horizontal gradient going from royal purple (`#820AD1`) to hot pink/magenta (`#FF006E`). It displays the bold white brand title **SmartLedger** on the left, and control actions (Sync, Twilio SMS test bell, **+ Add Transaction**, and **Logout**) on the right.
 - **Glassmorphic Topbar Actions:** All buttons inside the top banner are styled as white translucent glass capsules (`rgba(255,255,255,0.15)` background and thin borders) to blend with the purple-to-pink gradient.
 - **Left Sidebar Navigation:** Sits below the header banner with a white background. Inactive items display in purple, and the active menu tab has a rounded purple-to-magenta gradient background with white text.
 - **Tab Background:** The content area is styled with a soft lavender-pink tint background (`#FAF6FD`).
 - **Tab Favicon:** Custom SVG favicon displaying a bold white dollar sign (`$`) centered on a circle containing the purple-magenta gradient.
 
-### 📊 2. Stats Grid Row
+### 📊 4. Stats Grid Row
 - Displays four stats cards with clear colored accent tags (blue for Net Balance, green for Total Income, pink for Total Expenses, cyan for Savings Rate).
 - Lists comparison trend details under each large amount value (e.g. `▲ 12.5% vs last month`).
 
-### 📈 3. Spline Curve & Doughnut Charts
+### 📈 5. Spline Curve & Doughnut Charts
 - **Balance History Spline:** Monotone Bezier curve in blue with circle point coordinates outlined in white. Features a soft blue gradient fill underneath and a customized dark card tooltip showing date/amounts on hover.
 - **Expense by Category Doughnut:** Renders a clean segmented ring with an interactive vertical legend list displaying color dots and category percentages.
 
-### 🗂️ 4. Full-Width Ledger & Pop-up Transaction Form
-- **Full-Width Table:** The Transactions Ledger tab displays a spacious, full-width table layout for reading records easily.
-- **Pop-up Dialog Modal:** Clicking the **"+ Add Transaction"** button next to the select dropdown opens a centered overlay dialog containing the manual transaction input form.
-- **Status Column:** The table features a dedicated **Status** column showing:
-  - `🟢 Clear` for standard verified entries.
-  - `⚠️ Review` for entries requiring double-check review.
-
-### 💡 5. Smart Budget Assistant (User-Centric Tips)
+### 💡 6. Smart Budget Assistant (User-Centric Tips)
 We added a static analysis auditor checking for transaction discrepancies using simple, everyday language:
 - **Status Tag:** Flagged items show a clear status badge `⚠️ Review` inside the **Transaction History** table ledger.
 - **User-Centric Classifications:**
@@ -81,14 +88,14 @@ We added a static analysis auditor checking for transaction discrepancies using 
   - *Description Flag:* Labeled as **"Check Description"** ("The text in this entry looks unusual compared to your normal description tags.").
   - *Frequency Check:* Labeled as **"Busy Spending Day"** ("An unusually high number of transaction entries were logged on this date.").
 
-### 📅 6. Nivo Daily Savings & Cash Flow Heatmap
+### 📅 7. Nivo Daily Savings & Cash Flow Heatmap
 We added a custom data visualizer utilizing the `@nivo/calendar` library:
 - **120-Day Contributions Matrix:** Renders daily squares for the last 120 days (4 months) showing months separators.
 - **Savings vs Deficit Colors:** Neutral days show a light beige grid square; positive savings days glow green (intensity mapped to surplus value); spending deficit days glow red (intensity mapped to spending value).
 - **Interactive Tooltips:** Hovering over cells displays a custom tooltip showing the calendar date and the exact net cash flow surplus or deficit amount.
 - **Themed Labels & Margins:** Set text size to `8px` and configured padding/margins to prevent overlapping month indicators.
 
-### 📲 7. Automated Twilio SMS Event Triggers
+### 📲 8. Automated Twilio SMS Event Triggers
 - **Transaction Add SMS:** Whenever a transaction is created, the system automatically compiles and sends a live Twilio SMS notification to the configured number (`TWILIO_TEST_RECIPIENT_NUMBER`).
 - **Transaction Delete SMS:** Whenever a transaction is deleted, the system queries the details, removes the record, and automatically dispatches a Twilio SMS notification describing the deleted transaction.
 
