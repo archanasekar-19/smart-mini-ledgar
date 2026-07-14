@@ -1,40 +1,39 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  /* ============ Colors — navy blue + gold, subtle green/red for money ============ */
-  --bg-obsidian: #F3F6FB;
+  /* ============ Colors — Purple/Magenta gradient design ============ */
+  --bg-obsidian: #FAF6FD;
   --bg-surface: #FFFFFF;
   --bg-card: #FFFFFF;
-  --bg-input: #EAF1FA;
+  --bg-input: #F6EDFC;
 
-  --color-text-primary: #10233F;
-  --color-text-secondary: #57698A;
-  --color-text-muted: #93A2BE;
+  --color-text-primary: #2A0C4E;
+  --color-text-secondary: #6B5C7B;
+  --color-text-muted: #A291B5;
 
-  /* Primary — deep blue */
-  --color-violet: #1D4E89;
-  --color-violet-glow: rgba(29, 78, 137, 0.10);
+  /* Primary — Purple */
+  --color-violet: #820AD1;
+  --color-violet-glow: rgba(130, 10, 209, 0.10);
 
-  /* Accent — gold */
-  --color-pink: #C9A227;
-  --color-pink-glow: rgba(201, 162, 39, 0.14);
+  /* Accent — Pink */
+  --color-pink: #FF006E;
+  --color-pink-glow: rgba(255, 0, 110, 0.10);
 
-  /* Income / expense — kept deliberately muted, not bright */
-  --color-income: #71DD37;
-  --color-income-glow: rgba(113, 221, 55, 0.12);
-  --color-expense: #FF3E1D;
-  --color-expense-glow: rgba(255, 62, 29, 0.10);
+  /* Income / expense — vibrant green and crimson */
+  --color-income: #00C896;
+  --color-income-glow: rgba(0, 200, 150, 0.12);
+  --color-expense: #EF233C;
+  --color-expense-glow: rgba(239, 35, 60, 0.10);
 
-  --border-color: #DCE6F2;
-  --border-focus: #1D4E89;
+  --border-color: #EFE7F5;
+  --border-focus: #820AD1;
 
-  --rule-mint: #E8D9A8;
+  --rule-mint: #E8D9F0;
 
   /* Fonts */
-  --font-display: 'Sora', 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'Inter', sans-serif;
-  /* tabular-nums used instead of a separate mono face */
+  --font-display: 'Poppins', sans-serif;
+  --font-body: 'Poppins', sans-serif;
+  --font-mono: 'Poppins', sans-serif;
 }
 
 * {
@@ -70,57 +69,25 @@ body {
 
 .app-layout {
   display: flex;
-  min-height: 100vh;
+  flex: 1;
 }
 
-/* ============ Sidebar — light mint ============ */
 .sidebar {
   width: 250px;
   background-color: #FFFFFF;
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: 1.5rem 0;
+  padding: 1.5rem 0.5rem;
   flex-shrink: 0;
   z-index: 20;
-}
-
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  padding: 0 1.5rem 1.5rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.sidebar-brand h1 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--color-text-primary);
-  letter-spacing: -0.01em;
-}
-
-.logo-badge {
-  width: 2.35rem;
-  height: 2.35rem;
-  border-radius: 0.7rem;
-  background: linear-gradient(135deg, #D9B94A, #A9812F);
-  color: #FFFFFF;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 1.15rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 10px rgba(184, 145, 47, 0.30);
-  flex-shrink: 0;
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  padding: 1.5rem 0.75rem;
+  padding: 0 0.5rem;
   flex: 1;
 }
 
@@ -128,7 +95,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.8rem 1rem;
+  padding: 0.8rem 1.25rem;
   border-radius: 0.5rem;
   color: var(--color-text-secondary);
   font-family: var(--font-body);
@@ -136,24 +103,23 @@ body {
   font-size: 0.92rem;
   text-decoration: none;
   cursor: pointer;
-  border-left: 3px solid transparent;
   transition: all 0.15s ease;
 }
 
 .nav-link:hover {
   background-color: var(--bg-input);
-  color: var(--color-text-primary);
+  color: var(--color-violet);
 }
 
 .nav-link.active {
-  background-color: var(--color-violet-glow);
-  color: var(--color-violet);
-  border-left: 3px solid var(--color-violet);
+  background: linear-gradient(to right, var(--color-violet), var(--color-pink));
+  color: #FFFFFF;
   font-weight: 600;
+  box-shadow: 0 4px 10px rgba(130, 10, 209, 0.12);
 }
 
 .sidebar-footer {
-  padding: 1rem 1.5rem;
+  padding: 1rem 1.5rem 0 1.5rem;
   border-top: 1px solid var(--border-color);
   font-size: 0.72rem;
   color: var(--color-text-muted);
@@ -166,25 +132,59 @@ body {
   min-width: 0;
 }
 
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.topbar-btn:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.45);
+}
 .topbar {
-  background-color: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--border-color);
-  padding: 1rem 2rem;
+  background: linear-gradient(to right, var(--color-violet), var(--color-pink));
+  padding: 1.25rem 2.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: sticky;
-  top: 0;
-  z-index: 15;
-  box-shadow: 0 2px 10px rgba(16, 35, 63, 0.04);
+  color: #FFFFFF;
+  box-shadow: 0 4px 15px rgba(130, 10, 209, 0.15);
+  z-index: 30;
+}
+
+.topbar-btn {
+  background-color: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #FFFFFF;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.88rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.topbar-btn:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.topbar-btn svg {
+  color: #FFFFFF !important;
 }
 
 .topbar-title h2 {
-  font-size: 1.4rem;
-  color: var(--color-text-primary);
+  font-size: 1.6rem;
+  color: #FFFFFF;
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
 }
 
 .topbar-actions {
@@ -279,7 +279,7 @@ body {
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;

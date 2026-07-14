@@ -2,14 +2,14 @@ import React from 'react';
 import {
   AreaChart,
   Area,
-  BarChart,
-  Bar,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  Cell
+  ResponsiveContainer
 } from 'recharts';
 
 interface HistoryPoint {
@@ -30,53 +30,86 @@ interface CustomChartsProps {
   expensesByCategory: Array<{ category: string; amount: number }>;
 }
 
+const CATEGORY_COLORS: Record<string, string> = {
+  Food: '#5e50eb',      // Purple
+  Transport: '#ef4444', // Red
+  Utilities: '#f97316', // Orange
+  Shopping: '#10b981',  // Green
+  Other: '#3b82f6',     // Blue
+};
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const formattedDate = new Date(data.date).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    return (
+      <div 
+        style={{ 
+          backgroundColor: '#1f2937', 
+          color: '#ffffff', 
+          padding: '0.5rem 0.75rem', 
+          borderRadius: '0.5rem', 
+          fontSize: '0.78rem', 
+          boxShadow: '0 4px 15px rgba(0, 0, 0, 0.15)',
+          border: 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '0.15rem'
+        }}
+      >
+        <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>{formattedDate}</span>
+        <span style={{ fontWeight: '700' }}>${payload[0].value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+      </div>
+    );
+  }
+  return null;
+};
+
 export const CustomCharts: React.FC<CustomChartsProps> = ({
   history,
   forecast,
-  totalIncome,
-  totalExpenses,
   expensesByCategory,
 }) => {
   const historyPoints = history || [];
   const forecastPoints = forecast || [];
 
-  // Combine data for area chart
-  // We want to render a single continuous timeline where:
-  // - History points have History balance, Forecast = null
-  // - Forecast points have Forecast balance, History = null
-  // To connect the line smoothly: the first forecast point's History balance matches the last history balance
+  // Combine balance data for Area Chart
   const balanceData = [
     ...historyPoints.map((p) => ({
       date: p.date,
-      History: p.balance,
-      Forecast: null,
+      balance: p.balance,
+      isForecast: false,
     })),
-    ...forecastPoints.map((p, idx) => ({
+    ...forecastPoints.map((p) => ({
       date: p.date,
-      // Connect the forecast line smoothly to the end of the history line
-      History: idx === 0 && historyPoints.length > 0 ? historyPoints[historyPoints.length - 1].balance : null,
-      Forecast: p.predictedBalance,
+      // Connect smoothly to the last history point
+      balance: p.predictedBalance,
+      isForecast: true,
     })),
   ];
 
   const hasBalanceData = balanceData.length > 0;
 
-  // Comparison data for Income vs Expense
-  const comparisonData = [
-    { name: 'Income', amount: totalIncome, fill: 'var(--color-income)' },
-    { name: 'Expense', amount: totalExpenses, fill: 'var(--color-expense)' },
-  ];
+  // Format category expenses for Pie/Doughnut Chart
+  const activeCategories = expensesByCategory.filter((c) => c.amount > 0);
+  const totalExpenseSum = activeCategories.reduce((sum, c) => sum + c.amount, 0);
 
-  // Active Category Expenses
-  const activeCategories = expensesByCategory.filter(c => c.amount > 0);
-  const categoryData = activeCategories.map(c => ({
-    name: c.category,
-    amount: c.amount,
-  }));
+  const pieData = activeCategories.map((c) => {
+    const color = CATEGORY_COLORS[c.category] || CATEGORY_COLORS['Other'];
+    const percentage = totalExpenseSum > 0 ? (c.amount / totalExpenseSum) * 100 : 0;
+    return {
+      name: c.category,
+      value: c.amount,
+      percentage,
+      color,
+    };
+  });
 
-  // Custom tooltips formatter helper
-  const formatTooltipAmount = (value: any) => [`$${parseFloat(value).toFixed(2)}`, ''];
-  
   const formatXAxisDate = (tick: string) => {
     try {
       const d = new Date(tick);
@@ -88,183 +121,126 @@ export const CustomCharts: React.FC<CustomChartsProps> = ({
   };
 
   return (
-    <div className="analytics-grid" style={{ gap: '2rem' }}>
-      {/* 1. Area Chart: Balance History Bezier Curve & Forecast */}
-      <div className="card chart-card" style={{ gridColumn: 'span 2', position: 'relative' }}>
-        <div className="chart-header">
-          <h3>Balance History & 7-Day Forecast</h3>
-          <div className="legend">
-            <span className="legend-item"><span className="bullet history"></span>History</span>
-            <span className="legend-item"><span className="bullet forecast"></span>7-Day Forecast</span>
-          </div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', width: '100%' }}>
+      {/* 1. Balance History (Area Chart spline) */}
+      <div 
+        className="card" 
+        style={{ 
+          padding: '1.25rem', 
+          backgroundColor: '#FFFFFF', 
+          borderRadius: '1rem', 
+          border: '1px solid rgba(239, 231, 245, 0.5)', 
+          boxShadow: '0 4px 15px rgba(42, 12, 78, 0.02)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#2A0C4E', margin: 0 }}>Balance History</h3>
         </div>
-        
+
         {hasBalanceData ? (
-          <div style={{ width: '100%', height: '220px', marginTop: '1rem' }}>
+          <div style={{ width: '100%', height: '200px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={balanceData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <AreaChart data={balanceData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="historyGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-violet)" stopOpacity="0.15" />
-                    <stop offset="100%" stopColor="var(--color-violet)" stopOpacity="0.0" />
-                  </linearGradient>
-                  <linearGradient id="forecastGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-pink)" stopOpacity="0.12" />
-                    <stop offset="100%" stopColor="var(--color-pink)" stopOpacity="0.0" />
+                  <linearGradient id="balanceGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3e8ff" />
                 <XAxis
                   dataKey="date"
                   tickFormatter={formatXAxisDate}
-                  stroke="var(--color-text-secondary)"
+                  stroke="#a291b5"
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
-                  stroke="var(--color-text-secondary)"
+                  stroke="#a291b5"
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(val) => `$${val}`}
+                  tickFormatter={(val) => `$${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}`}
                 />
-                <Tooltip
-                  formatter={formatTooltipAmount}
-                  labelFormatter={(label) => new Date(label).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                  contentStyle={{
-                    backgroundColor: 'var(--color-violet)',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '0.25rem',
-                    fontSize: '0.75rem',
-                    fontFamily: 'var(--font-body)',
-                  }}
-                  itemStyle={{ color: '#ffffff' }}
-                  labelStyle={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.65rem' }}
-                />
+                <Tooltip content={<CustomTooltip />} />
                 <Area
                   type="monotone"
-                  dataKey="History"
-                  stroke="var(--color-violet)"
+                  dataKey="balance"
+                  stroke="#3b82f6"
                   strokeWidth={2.5}
-                  fill="url(#historyGrad)"
-                  activeDot={{ r: 5 }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="Forecast"
-                  stroke="var(--color-pink)"
-                  strokeDasharray="5 5"
-                  strokeWidth={2.5}
-                  fill="url(#forecastGrad)"
-                  activeDot={{ r: 5 }}
-                  connectNulls
+                  fill="url(#balanceGrad)"
+                  activeDot={{ r: 6, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 2 }}
+                  dot={{ r: 4, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 1.5 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="no-data-chart" style={{ height: '220px' }}>
-            <p>Add transactions to populate the timeline projection.</p>
+          <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a291b5', fontSize: '0.85rem' }}>
+            No history points logged.
           </div>
         )}
       </div>
 
-      {/* 2. Income vs Expense Bar Chart */}
-      <div className="card chart-card flex-col" style={{ minHeight: '270px' }}>
-        <h3>Income vs Expense</h3>
-        
-        {totalIncome + totalExpenses > 0 ? (
-          <div style={{ width: '100%', height: '180px', marginTop: '1rem' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={comparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
-                <XAxis
-                  dataKey="name"
-                  stroke="var(--color-text-secondary)"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="var(--color-text-secondary)"
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(val) => `$${val}`}
-                />
-                <Tooltip
-                  formatter={formatTooltipAmount}
-                  contentStyle={{
-                    backgroundColor: 'var(--color-violet)',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '0.25rem',
-                    fontSize: '0.75rem',
-                    fontFamily: 'var(--font-body)',
-                  }}
-                  itemStyle={{ color: '#ffffff' }}
-                  labelStyle={{ display: 'none' }}
-                />
-                <Bar dataKey="amount" radius={[4, 4, 0, 0]} maxBarSize={45}>
-                  {comparisonData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="no-data-chart" style={{ height: '180px' }}>
-            <p>No income/expense records registered.</p>
-          </div>
-        )}
-      </div>
+      {/* 2. Expense by Category (Doughnut Chart) */}
+      <div 
+        className="card" 
+        style={{ 
+          padding: '1.25rem', 
+          backgroundColor: '#FFFFFF', 
+          borderRadius: '1rem', 
+          border: '1px solid rgba(239, 231, 245, 0.5)', 
+          boxShadow: '0 4px 15px rgba(42, 12, 78, 0.02)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem'
+        }}
+      >
+        <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#2A0C4E', margin: 0 }}>Expense by Category</h3>
 
-      {/* 3. Category Expense Bar Chart */}
-      <div className="card chart-card flex-col" style={{ minHeight: '270px' }}>
-        <h3>Expense by Category</h3>
-        
-        {activeCategories.length > 0 ? (
-          <div style={{ width: '100%', height: '180px', marginTop: '1rem' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={categoryData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
-                <XAxis
-                  dataKey="name"
-                  stroke="var(--color-text-secondary)"
-                  fontSize={9}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="var(--color-text-secondary)"
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(val) => `$${val}`}
-                />
-                <Tooltip
-                  formatter={formatTooltipAmount}
-                  contentStyle={{
-                    backgroundColor: 'var(--color-violet)',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '0.25rem',
-                    fontSize: '0.75rem',
-                    fontFamily: 'var(--font-body)',
-                  }}
-                  itemStyle={{ color: '#ffffff' }}
-                  labelStyle={{ display: 'none' }}
-                />
-                <Bar dataKey="amount" fill="var(--color-pink)" radius={[4, 4, 0, 0]} maxBarSize={30} />
-              </BarChart>
-            </ResponsiveContainer>
+        {pieData.length > 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flex: 1, minHeight: '170px' }}>
+            {/* Doughnut Chart */}
+            <div style={{ width: '150px', height: '150px', position: 'relative' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={62}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Custom Legend */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+              {pieData.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#6B5C7B' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color, display: 'inline-block' }}></span>
+                    <span>{item.name}</span>
+                  </div>
+                  <span style={{ fontWeight: '700', color: '#2A0C4E' }}>{item.percentage.toFixed(0)}%</span>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
-          <div className="no-data-chart" style={{ height: '180px' }}>
-            <p>No category expenses recorded.</p>
+          <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a291b5', fontSize: '0.85rem' }}>
+            No expense categories registered.
           </div>
         )}
       </div>

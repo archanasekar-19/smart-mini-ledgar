@@ -1,6 +1,6 @@
 # 💡 Smart Ledger ($martLedger)
 
-A lightweight, full-stack financial ledger application built with **React 19 (Vite)**, **NestJS**, and **PostgreSQL**. It features a warm beige-sand background with architectural vertical stripes, slate-navy typography, and bronze-gold accents.
+A lightweight, full-stack financial ledger application built with **React 19 (Vite)**, **NestJS**, and **PostgreSQL**. It features a modern **purple-to-magenta gradient** design theme styled entirely in the **Poppins** typography family, slate-violet text details, and soft lavender background highlights.
 
 ---
 
@@ -21,7 +21,7 @@ A lightweight, full-stack financial ledger application built with **React 19 (Vi
    ```
 3. Update `.env` with your PostgreSQL database configurations.
    *(Note: The database connection automatically initializes the `smart_ledger` database and its tables on boot!)*
-4. The `.env` file is pre-configured with active **Twilio credentials** and defaults to the test recipient number (`+919384257033`) for automated SMS notifications out-of-the-box.
+4. The `.env` file is pre-configured with active **Twilio credentials** and defaults to the configured testing phone number (`+919384257033`) for automated dispatches out-of-the-box.
 
 ---
 
@@ -49,22 +49,30 @@ Open `http://localhost:5173` in your browser.
 
 ## ✨ Features & Architecture
 
-### 🗺️ 1. Left Sidebar Navigation & SMS Testing Console
-- **Navigation Sidebar:** Toggle between **Dashboard** (metrics, charts, heatmap calendar, assistant tips) and **Transactions Ledger** (table, pop-up dialog, filters).
-- **Topbar SMS Controller (Notification Bell Modal):** Clicking the notification bell in the topbar opens a centered dialog console pre-configured with active Twilio API credentials.
-- **Quick Report Templates:** Features three buttons inside the dialog that dynamically draft SMS reports using the active client state data:
-  - **Balance Stats:** Auto-drafts a report detailing Net Balance, Total Income, Total Expenses, and Net Savings Rate.
-  - **Top Expense:** Identifies the highest expense category and drafts an alert with its spent value.
-  - **7-Day Forecast:** Drafts balance predictions and daily spending velocity calculated by the Least Squares Linear Regression backend service.
+### 🗺️ 1. Purple-to-Magenta Theme & Layout
+- **Poppins Typography:** All headings, dashboard text metrics, tables, and settings use the **Poppins** font family.
+- **Full-Width Topbar Banner:** Renders a sticky top header spanning 100% of the screen width, styled with a horizontal gradient going from royal purple (`#820AD1`) to hot pink/magenta (`#FF006E`). It displays the bold white brand title **SmartLedger** on the left, and control actions (Sync, Twilio SMS test bell, and **+ Add Transaction**) on the right.
+- **Glassmorphic Topbar Actions:** All buttons inside the top banner are styled as white translucent glass capsules (`rgba(255,255,255,0.15)` background and thin borders) to blend with the purple-to-pink gradient.
+- **Left Sidebar Navigation:** Sits below the header banner with a white background. Inactive items display in purple, and the active menu tab has a rounded purple-to-magenta gradient background with white text.
+- **Tab Background:** The content area is styled with a soft lavender-pink tint background (`#FAF6FD`).
+- **Tab Favicon:** Custom SVG favicon displaying a bold white dollar sign (`$`) centered on a circle containing the purple-magenta gradient.
 
-### 🗂️ 2. Full-Width Ledger & Pop-up Transaction Form
+### 📊 2. Stats Grid Row
+- Displays four stats cards with clear colored accent tags (blue for Net Balance, green for Total Income, pink for Total Expenses, cyan for Savings Rate).
+- Lists comparison trend details under each large amount value (e.g. `▲ 12.5% vs last month`).
+
+### 📈 3. Spline Curve & Doughnut Charts
+- **Balance History Spline:** Monotone Bezier curve in blue with circle point coordinates outlined in white. Features a soft blue gradient fill underneath and a customized dark card tooltip showing date/amounts on hover.
+- **Expense by Category Doughnut:** Renders a clean segmented ring with an interactive vertical legend list displaying color dots and category percentages.
+
+### 🗂️ 4. Full-Width Ledger & Pop-up Transaction Form
 - **Full-Width Table:** The Transactions Ledger tab displays a spacious, full-width table layout for reading records easily.
-- **Pop-up Dialog Modal:** Clicking the **"+ Add Transaction"** button in the ledger header opens a centered overlay dialog containing the manual transaction input form.
+- **Pop-up Dialog Modal:** Clicking the **"+ Add Transaction"** button next to the select dropdown opens a centered overlay dialog containing the manual transaction input form.
 - **Status Column:** The table features a dedicated **Status** column showing:
   - `🟢 Clear` for standard verified entries.
-  - `⚠️ Review` for entries flagged by the smart assistant.
+  - `⚠️ Review` for entries requiring double-check review.
 
-### 💡 3. Smart Budget Assistant (User-Centric Tips)
+### 💡 5. Smart Budget Assistant (User-Centric Tips)
 We added a static analysis auditor checking for transaction discrepancies using simple, everyday language:
 - **Status Tag:** Flagged items show a clear status badge `⚠️ Review` inside the **Transaction History** table ledger.
 - **User-Centric Classifications:**
@@ -73,19 +81,14 @@ We added a static analysis auditor checking for transaction discrepancies using 
   - *Description Flag:* Labeled as **"Check Description"** ("The text in this entry looks unusual compared to your normal description tags.").
   - *Frequency Check:* Labeled as **"Busy Spending Day"** ("An unusually high number of transaction entries were logged on this date.").
 
-### 📅 4. Nivo Daily Savings & Cash Flow Heatmap
+### 📅 6. Nivo Daily Savings & Cash Flow Heatmap
 We added a custom data visualizer utilizing the `@nivo/calendar` library:
 - **120-Day Contributions Matrix:** Renders daily squares for the last 120 days (4 months) showing months separators.
 - **Savings vs Deficit Colors:** Neutral days show a light beige grid square; positive savings days glow green (intensity mapped to surplus value); spending deficit days glow red (intensity mapped to spending value).
 - **Interactive Tooltips:** Hovering over cells displays a custom tooltip showing the calendar date and the exact net cash flow surplus or deficit amount.
 - **Themed Labels & Margins:** Set text size to `8px` and configured padding/margins to prevent overlapping month indicators.
 
-### 📈 5. Recharts Area & Bar Analytics (Gradients & Curves)
-- **Area Chart (Balance History & Forecast):** Renders smooth Bezier curve lines using monotone interpolation. History (Solid Cobalt line, soft blue fill) and Forecast (Dotted Gold line, soft gold fill) connect.
-- **Income vs Expense Column Chart:** Renders vertical bar columns with rounded top corners, allowing users to hover and inspect values.
-- **Category Expense Column Chart:** Renders a vertical column for each expense category with rounded top corners.
-
-### 📲 6. Automated Twilio SMS Event Triggers
+### 📲 7. Automated Twilio SMS Event Triggers
 - **Transaction Add SMS:** Whenever a transaction is created, the system automatically compiles and sends a live Twilio SMS notification to the configured number (`TWILIO_TEST_RECIPIENT_NUMBER`).
 - **Transaction Delete SMS:** Whenever a transaction is deleted, the system queries the details, removes the record, and automatically dispatches a Twilio SMS notification describing the deleted transaction.
 
@@ -111,8 +114,8 @@ AI is great for speed, but standard generated boilerplates frequently break unde
 
 #### 2. Windows SQLite Compilation Bottlenecks (Database Architecture)
 - **The AI Oversight:** To avoid setting up PostgreSQL local databases, the AI recommended using native SQL containers like `better-sqlite3`.
-- **The Issue:** Native SQLite drivers compile C++ binaries under the hood on installation, which crashes on Windows machines lacking Visual Studio C++ Compiler tools and Python.
-- **Human Resolution:** Bypassed native drivers entirely, integrating pure Node node-postgres (`pg`). We built an automated database connection service in NestJS that checks if the database exists on boot, auto-creates it, and applies schema migrations. This delivers a zero-barrier startup experience.
+- **The Issue:** Windows SQLite compilation native C++ SQLite drivers require local compiler toolchains, which frequently fail during installation.
+- **Human Resolution:** Integrated node-postgres (`pg`) with an automated connection bootstrap layer that auto-creates the database if not found.
 
 #### 3. TypeScript Implicit Typings (Compiler Crash)
 - **The AI Oversight:** Inside the linear regression forecasting loop, the AI initialized prediction arrays using `const forecast = [];`. Under strict compiler settings, TypeScript inferred this as `never[]`, throwing type errors when pushing forecast models.
@@ -120,4 +123,4 @@ AI is great for speed, but standard generated boilerplates frequently break unde
 
 #### 4. Avoiding Complex Broker Overengineering (Neat Ledger Architecture)
 - **The AI Oversight:** AI models suggested deploying heavy message queues (like RabbitMQ or BullMQ) to queue and dispatch Twilio SMS alerts.
-- **Human Resolution:** Kept the ledger simple, neat, and highly performant (avoiding microservice overhead) by routing dispatches as background promises directly inside the NestJS transactional lifecycle. Dispatches fail silently in the background if Twilio's REST API is unreachable, preventing transaction saves from locking up.
+- **Human Resolution:** Routed alerts as background promises directly in NestJS transactional lifecycles, avoiding excessive infrastructure overhead.
