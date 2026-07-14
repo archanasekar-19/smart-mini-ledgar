@@ -1161,3 +1161,28 @@ body {
   color: var(--color-violet);
   border: 1.5px solid var(--color-violet);
 }
+
+/* ============ Beautiful Custom Scrollbars (Universal) ============ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(130, 10, 209, 0.16);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(130, 10, 209, 0.35);
+}
+
+/* Firefox compatibility */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(130, 10, 209, 0.16) transparent;
+}
